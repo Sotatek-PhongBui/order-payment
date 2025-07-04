@@ -16,7 +16,10 @@ export class AppService {
   }
   async onModuleInit() {
     await this.redisSubscriber.subscribe('order.created', async (message) => {
-      console.log(`order created at ${new Date().toISOString()}`, message);
+      console.log(
+        `order created at ${new Date().toISOString()}`,
+        JSON.parse(message),
+      );
       interface Order {
         id: string;
         status: string;

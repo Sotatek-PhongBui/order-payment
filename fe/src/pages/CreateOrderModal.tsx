@@ -11,7 +11,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
 import type { Order, OrderItem } from "../types/order";
@@ -21,63 +27,69 @@ interface CreateOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreateOrder: (order: Order) => void;
-  nextOrderId: string;
 }
 
 interface NewOrderForm {
-  customerName: string;
-  customerEmail: string;
-  shippingAddress: string;
-  items: Omit<OrderItem, "id">[];
+  userId: string;
+  items: OrderItem[];
 }
+
+const PRODUCTS = [
+  {
+    id: "405e4872-4b40-4c71-8e93-c0536249393b",
+    name: "ga ran",
+    description: "gan ran siu ngol",
+    price: 200000,
+  },
+  {
+    id: "89e2968f-d18d-4450-a8a9-b320f242f7d1",
+    name: "coca",
+    description: "coca siu ngol",
+    price: 15000,
+  },
+  {
+    id: "b5744947-7613-407e-8c3a-467640015d63",
+    name: "khoai tay chien",
+    description: "khoai tay chien siu ngol",
+    price: 50000,
+  },
+];
 
 export function CreateOrderModal({
   isOpen,
   onClose,
   onCreateOrder,
-  nextOrderId,
 }: CreateOrderModalProps) {
   const [newOrder, setNewOrder] = useState<NewOrderForm>({
-    customerName: "",
-    customerEmail: "",
-    shippingAddress: "",
-    items: [{ name: "", quantity: 1, price: 0 }],
+    userId: "",
+    items: [{ productId: PRODUCTS[0].id, quantity: 1 } as OrderItem],
   });
 
   const handleCreateOrder = () => {
-    const total = newOrder.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
     const order: Order = {
-      id: nextOrderId,
-      customerName: newOrder.customerName,
-      customerEmail: newOrder.customerEmail,
+      userId: newOrder.userId,
       status: "created",
-      total,
-      items: newOrder.items.map((item, index) => ({
-        id: String(index + 1),
+      items: newOrder.items.map((item) => ({
         ...item,
-      })),
+      })) as OrderItem[],
       createdAt: new Date().toISOString(),
-      shippingAddress: newOrder.shippingAddress,
-    };
+    } as Order;
 
     onCreateOrder(order);
     onClose();
     setNewOrder({
-      customerName: "",
-      customerEmail: "",
-      shippingAddress: "",
-      items: [{ name: "", quantity: 1, price: 0 }],
+      userId: "",
+      items: [{ productId: PRODUCTS[0].id, quantity: 1 } as OrderItem],
     });
   };
 
   const addOrderItem = () => {
     setNewOrder({
       ...newOrder,
-      items: [...newOrder.items, { name: "", quantity: 1, price: 0 }],
+      items: [
+        ...newOrder.items,
+        { productId: PRODUCTS[0].id, quantity: 1 } as OrderItem,
+      ],
     });
   };
 
@@ -90,14 +102,19 @@ export function CreateOrderModal({
 
   const updateOrderItem = (
     index: number,
-    field: keyof Omit<OrderItem, "id">,
-    value: unknown
+    field: keyof (typeof newOrder.items)[0],
+    value: string | number
   ) => {
     const updatedItems = newOrder.items.map((item, i) =>
       i === index ? { ...item, [field]: value } : item
     );
     setNewOrder({ ...newOrder, items: updatedItems });
   };
+
+  const total = newOrder.items.reduce((sum, item) => {
+    const product = PRODUCTS.find((p) => p.id === item.productId);
+    return sum + (product?.price || 0) * item.quantity;
+  }, 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -109,40 +126,15 @@ export function CreateOrderModal({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="customerName">Tên khách hàng</Label>
-              <Input
-                id="customerName"
-                value={newOrder.customerName}
-                onChange={(e) =>
-                  setNewOrder({ ...newOrder, customerName: e.target.value })
-                }
-                placeholder="Nhập tên khách hàng"
-              />
-            </div>
-            <div>
-              <Label htmlFor="customerEmail">Email</Label>
-              <Input
-                id="customerEmail"
-                type="email"
-                value={newOrder.customerEmail}
-                onChange={(e) =>
-                  setNewOrder({ ...newOrder, customerEmail: e.target.value })
-                }
-                placeholder="Nhập email"
-              />
-            </div>
-          </div>
           <div>
-            <Label htmlFor="shippingAddress">Địa chỉ giao hàng</Label>
-            <Textarea
-              id="shippingAddress"
-              value={newOrder.shippingAddress}
+            <Label htmlFor="userId">User Id</Label>
+            <Input
+              id="userId"
+              value={newOrder.userId}
               onChange={(e) =>
-                setNewOrder({ ...newOrder, shippingAddress: e.target.value })
+                setNewOrder({ ...newOrder, userId: e.target.value })
               }
-              placeholder="Nhập địa chỉ giao hàng"
+              placeholder="Nhập User Id"
             />
           </div>
           <div>
@@ -160,19 +152,28 @@ export function CreateOrderModal({
             </div>
             {newOrder.items.map((item, index) => (
               <div key={index} className="grid grid-cols-12 gap-2 mb-2">
-                <div className="col-span-5">
-                  <Input
-                    placeholder="Tên sản phẩm"
-                    value={item.name}
-                    onChange={(e) =>
-                      updateOrderItem(index, "name", e.target.value)
+                <div className="col-span-6">
+                  <Select
+                    value={item.productId}
+                    onValueChange={(value) =>
+                      updateOrderItem(index, "productId", value)
                     }
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn sản phẩm" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRODUCTS.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name} ({formatCurrency(product.price)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-4">
                   <Input
                     type="number"
-                    placeholder="SL"
                     min="1"
                     value={item.quantity}
                     onChange={(e) =>
@@ -184,22 +185,7 @@ export function CreateOrderModal({
                     }
                   />
                 </div>
-                <div className="col-span-4">
-                  <Input
-                    type="number"
-                    placeholder="Giá"
-                    min="0"
-                    value={item.price}
-                    onChange={(e) =>
-                      updateOrderItem(
-                        index,
-                        "price",
-                        Number.parseFloat(e.target.value) || 0
-                      )
-                    }
-                  />
-                </div>
-                <div className="col-span-1">
+                <div className="col-span-2">
                   {newOrder.items.length > 1 && (
                     <Button
                       type="button"
@@ -215,15 +201,7 @@ export function CreateOrderModal({
             ))}
           </div>
           <div className="text-right">
-            <strong>
-              Tổng tiền:{" "}
-              {formatCurrency(
-                newOrder.items.reduce(
-                  (sum, item) => sum + item.price * item.quantity,
-                  0
-                )
-              )}
-            </strong>
+            <strong>Tổng tiền: {formatCurrency(total)}</strong>
           </div>
         </div>
         <DialogFooter>

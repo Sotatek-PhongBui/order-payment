@@ -1,19 +1,16 @@
 export interface Order {
   id: string;
-  customerName: string;
-  customerEmail: string;
+  userId: string;
   status: "created" | "confirmed" | "deliveried" | "cancelled";
-  total: number;
   items: OrderItem[];
   createdAt: string;
-  shippingAddress: string;
 }
 
 export interface OrderItem {
   id: string;
-  name: string;
+  orderId: string;
+  productId: string;
   quantity: number;
-  price: number;
 }
 
 export type SortBy = "id" | "status" | "createdAt";

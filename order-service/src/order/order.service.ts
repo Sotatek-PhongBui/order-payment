@@ -4,10 +4,14 @@ import { Repository, UpdateResult, DataSource } from 'typeorm';
 import { CreateOrderDto, QueryOrderDto } from '../order/order.dto';
 import { OrderStatus } from '../entity/orderStatus.enum';
 import { RedisClientType } from 'redis';
+import { OrderItem } from 'src/entity/orderItem.entity';
+import { Production } from 'src/entity/production.entity';
 
 @Injectable()
 export class OrderService {
   private readonly orderRepository: Repository<Order>;
+  private readonly productRepository: Repository<Production>;
+  private readonly orderItemRepository: Repository<OrderItem>;
   constructor(
     @Inject('REDIS_PUBLISHER')
     private readonly redisPublisher: RedisClientType,
@@ -16,6 +20,8 @@ export class OrderService {
     private readonly dataSource: DataSource,
   ) {
     this.orderRepository = this.dataSource.getRepository(Order);
+    this.productRepository = this.dataSource.getRepository(Production);
+    this.orderItemRepository = this.dataSource.getRepository(OrderItem);
   }
 
   delay(ms: number): Promise<void> {
@@ -99,7 +105,34 @@ export class OrderService {
   }
   async createOrder(order: CreateOrderDto): Promise<Order> {
     console.log('Order created', order);
-    const newOrder = await this.orderRepository.save(order);
+    const newOrder = this.orderRepository.create({
+      userId: order.userId,
+      items: [], // hoặc không gán items
+    });
+    await this.orderRepository.save(newOrder);
+
+    const items: OrderItem[] = [];
+    for (const item of order.items) {
+      const product = await this.productRepository.findOneByOrFail({
+        id: item.productId,
+      });
+      items.push({
+        order: newOrder,
+        production: product,
+        quantity: item.quantity,
+      } as OrderItem);
+    }
+    await this.orderItemRepository.save(items);
+    newOrder.items = items;
+    // const newOrder: Order = await this.orderRepository.save({
+    //   userId: order.userId,
+    //   items: order.items.map((item) => ({
+    //     // order: { id: newOrder.id },
+    //     production: { id: item.productId },
+    //     quantity: item.quantity,
+    //   })),
+    // });
+
     await this.redisPublisher.publish(
       'order.created',
       JSON.stringify({ id: newOrder.id, status: newOrder.status }),

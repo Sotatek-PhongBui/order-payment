@@ -17,8 +17,8 @@ export class OrderItemDto {
   @IsUUID()
   productId: string;
 
-  @IsUUID()
-  orderId: string;
+  // @IsUUID()
+  // orderId: string;
 
   @Type(() => Number)
   @IsNumber()
@@ -27,8 +27,8 @@ export class OrderItemDto {
 }
 
 export class CreateOrderDto {
-  @IsUUID()
   @IsNotEmpty({ message: 'User Id is required.' })
+  @IsString()
   userId: string;
 
   @IsArray()

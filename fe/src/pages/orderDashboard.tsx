@@ -92,6 +92,7 @@ export default function OrderDashboard() {
   };
 
   const handleCreateOrder = async (order: Order) => {
+    console.log("Create order", order);
     await createOrder(order);
     await queryClient.invalidateQueries({ queryKey: ["orders"] });
   };
@@ -171,7 +172,6 @@ export default function OrderDashboard() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreateOrder={handleCreateOrder}
-        nextOrderId={`ORD-${Math.random().toString(36).substring(2, 8)}`}
       />
     </div>
   );
