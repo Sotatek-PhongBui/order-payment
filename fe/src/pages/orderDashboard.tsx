@@ -31,7 +31,7 @@ export default function OrderDashboard() {
   const sortBy = searchParams.get("sortBy") || "createdAt";
   const sortOrder = searchParams.get("sortOrder") || "desc";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -118,7 +118,9 @@ export default function OrderDashboard() {
       </div>
 
       {/* Stats */}
-      <OrderStats orders={data?.data || []} />
+      <OrderStats
+        meta={data?.meta || { total: 0, cancelled: 0, deliveried: 0 }}
+      />
 
       <Card>
         <CardHeader>

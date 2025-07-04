@@ -1,20 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Order } from "../types/order";
+// import type { Order } from "../types/order";
 // import { formatCurrency } from "../utils/formatters";
 
 interface OrderStatsProps {
-  orders: Order[];
+  meta: {
+    total: number;
+    cancelled: number;
+    deliveried: number;
+    // totalRevenue: number;
+  };
 }
 
-export function OrderStats({ orders }: OrderStatsProps) {
-  const pendingOrders = orders.filter((o) => o.status === "cancelled").length;
-  const deliveredOrders = orders.filter(
-    (o) => o.status === "deliveried"
-  ).length;
-  // const totalRevenue = orders
-  //   .filter((o) => o.status === "deliveried")
-  //   .reduce((sum, o) => sum + o.total, 0);
-
+export function OrderStats({ meta }: OrderStatsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <Card>
@@ -22,7 +19,7 @@ export function OrderStats({ orders }: OrderStatsProps) {
           <CardTitle className="text-sm font-medium">Tổng đơn hàng</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{orders.length}</div>
+          <div className="text-2xl font-bold">{meta.total}</div>
         </CardContent>
       </Card>
       <Card>
@@ -30,7 +27,7 @@ export function OrderStats({ orders }: OrderStatsProps) {
           <CardTitle className="text-sm font-medium">Đã hủy</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{pendingOrders}</div>
+          <div className="text-2xl font-bold">{meta.cancelled}</div>
         </CardContent>
       </Card>
       <Card>
@@ -38,7 +35,7 @@ export function OrderStats({ orders }: OrderStatsProps) {
           <CardTitle className="text-sm font-medium">Đã giao</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{deliveredOrders}</div>
+          <div className="text-2xl font-bold">{meta.deliveried}</div>
         </CardContent>
       </Card>
       {/* <Card>

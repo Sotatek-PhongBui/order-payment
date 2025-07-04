@@ -65,6 +65,8 @@ export class OrderService {
       page: number;
       limit: number;
       totalPages: number;
+      cancelled: number;
+      deliveried: number;
     };
   }> {
     const take: number = query.limit ?? 10;
@@ -100,6 +102,12 @@ export class OrderService {
         page: Number(query.page),
         limit: take,
         totalPages: Math.ceil(total / take),
+        cancelled: data.filter(
+          (order) => order.status === OrderStatus.CANCELLED,
+        ).length,
+        deliveried: data.filter(
+          (order) => order.status === OrderStatus.DELIVERIED,
+        ).length,
       },
     };
   }

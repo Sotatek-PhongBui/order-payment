@@ -13,13 +13,27 @@ export async function fetchOrder(params: {
   sortOrder: string;
 }): Promise<{
   data: Order[];
-  meta: { total: number; page: number; limit: number; totalPages: number };
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    cancelled: number;
+    deliveried: number;
+  };
 }> {
   console.log(params);
   params.sortOrder = params.sortOrder.toUpperCase();
   const response = await axiosInstance.get<{
     data: Order[];
-    meta: { total: number; page: number; limit: number; totalPages: number };
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+      cancelled: number;
+      deliveried: number;
+    };
   }>("", { params });
   return response.data;
 }
