@@ -20,40 +20,20 @@ import {
 } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
-import type { Order, OrderItem } from "../types/order";
+import type { CreateOrderItem, CreateOrder } from "../types/order";
 import { formatCurrency } from "../utils/formatters";
+import { PRODUCTS } from "../data/mockProduct";
 
 interface CreateOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateOrder: (order: Order) => void;
+  onCreateOrder: (order: CreateOrder) => void;
 }
 
 interface NewOrderForm {
   userId: string;
-  items: OrderItem[];
+  items: CreateOrderItem[];
 }
-
-const PRODUCTS = [
-  {
-    id: "405e4872-4b40-4c71-8e93-c0536249393b",
-    name: "ga ran",
-    description: "gan ran siu ngol",
-    price: 200000,
-  },
-  {
-    id: "89e2968f-d18d-4450-a8a9-b320f242f7d1",
-    name: "coca",
-    description: "coca siu ngol",
-    price: 15000,
-  },
-  {
-    id: "b5744947-7613-407e-8c3a-467640015d63",
-    name: "khoai tay chien",
-    description: "khoai tay chien siu ngol",
-    price: 50000,
-  },
-];
 
 export function CreateOrderModal({
   isOpen,
@@ -62,24 +42,24 @@ export function CreateOrderModal({
 }: CreateOrderModalProps) {
   const [newOrder, setNewOrder] = useState<NewOrderForm>({
     userId: "",
-    items: [{ productId: PRODUCTS[0].id, quantity: 1 } as OrderItem],
+    items: [{ productId: PRODUCTS[0].id, quantity: 1 } as CreateOrderItem],
   });
 
   const handleCreateOrder = () => {
-    const order: Order = {
+    const order: CreateOrder = {
       userId: newOrder.userId,
       status: "created",
       items: newOrder.items.map((item) => ({
         ...item,
-      })) as OrderItem[],
+      })) as CreateOrderItem[],
       createdAt: new Date().toISOString(),
-    } as Order;
+    } as CreateOrder;
 
     onCreateOrder(order);
     onClose();
     setNewOrder({
       userId: "",
-      items: [{ productId: PRODUCTS[0].id, quantity: 1 } as OrderItem],
+      items: [{ productId: PRODUCTS[0].id, quantity: 1 } as CreateOrderItem],
     });
   };
 
@@ -88,7 +68,7 @@ export function CreateOrderModal({
       ...newOrder,
       items: [
         ...newOrder.items,
-        { productId: PRODUCTS[0].id, quantity: 1 } as OrderItem,
+        { productId: PRODUCTS[0].id, quantity: 1 } as CreateOrderItem,
       ],
     });
   };

@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Order } from "../types/order";
+import type { CreateOrder, Order } from "../types/order";
 
 const axiosInstance = axios.create({
   baseURL: "http://localhost:4001/order",
@@ -24,7 +24,12 @@ export async function fetchOrder(params: {
   return response.data;
 }
 
-export async function createOrder(order: Order): Promise<Order> {
+export async function fetchOrderDetail(id: string): Promise<Order> {
+  const response = await axiosInstance.get<Order>(`/${id}`);
+  return response.data;
+}
+
+export async function createOrder(order: CreateOrder): Promise<Order> {
   const response = await axiosInstance.post<Order>("", order);
   return response.data;
 }

@@ -1,3 +1,23 @@
+export interface CreateOrder {
+  id: string;
+  userId: string;
+  status: "created" | "confirmed" | "deliveried" | "cancelled";
+  items: CreateOrderItem[];
+  createdAt: string;
+}
+
+export interface Production {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+}
+
+export interface CreateOrderItem {
+  productId: string;
+  quantity: number;
+}
+
 export interface Order {
   id: string;
   userId: string;
@@ -9,7 +29,7 @@ export interface Order {
 export interface OrderItem {
   id: string;
   orderId: string;
-  productId: string;
+  production: Production;
   quantity: number;
 }
 

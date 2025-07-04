@@ -11,6 +11,10 @@ export class OrderController {
     console.log(query);
     return this.orderService.getOrders(query);
   }
+  @Get(':id')
+  getOrder(@Param('id') id: string) {
+    return this.orderService.getOrderById(id);
+  }
   //create order
   @Post()
   createOrder(@Body() order: CreateOrderDto) {

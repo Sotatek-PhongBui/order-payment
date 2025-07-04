@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
-import type { Order } from "../types/order";
+import type { CreateOrder, Order } from "../types/order";
 import { OrderStats } from "../components/OrderStats";
 import { OrderFilters } from "../components/OrderFilters";
 import { OrderTable } from "../components/OrderTable";
@@ -91,7 +91,7 @@ export default function OrderDashboard() {
     queryClient.invalidateQueries({ queryKey: ["orders"] });
   };
 
-  const handleCreateOrder = async (order: Order) => {
+  const handleCreateOrder = async (order: CreateOrder) => {
     console.log("Create order", order);
     await createOrder(order);
     await queryClient.invalidateQueries({ queryKey: ["orders"] });

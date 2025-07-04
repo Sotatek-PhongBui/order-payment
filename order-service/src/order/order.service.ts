@@ -103,11 +103,23 @@ export class OrderService {
       },
     };
   }
+
+  async getOrderById(id: string): Promise<Order> {
+    console.log('Order by id', id);
+    const order = await this.orderRepository.findOne({
+      where: { id: id },
+      relations: ['items', 'items.production'],
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with id ${id} not found`);
+    }
+    return order;
+  }
+
   async createOrder(order: CreateOrderDto): Promise<Order> {
     console.log('Order created', order);
     const newOrder = this.orderRepository.create({
       userId: order.userId,
-      items: [], // hoặc không gán items
     });
     await this.orderRepository.save(newOrder);
 
@@ -123,7 +135,10 @@ export class OrderService {
       } as OrderItem);
     }
     await this.orderItemRepository.save(items);
-    newOrder.items = items;
+    const fullOrder = await this.orderRepository.findOne({
+      where: { id: newOrder.id },
+      relations: ['items', 'items.production'],
+    });
     // const newOrder: Order = await this.orderRepository.save({
     //   userId: order.userId,
     //   items: order.items.map((item) => ({
@@ -137,7 +152,7 @@ export class OrderService {
       'order.created',
       JSON.stringify({ id: newOrder.id, status: newOrder.status }),
     );
-    return newOrder;
+    return fullOrder as Order;
   }
 
   async cancelOrder(id: string): Promise<UpdateResult> {
