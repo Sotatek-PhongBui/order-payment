@@ -9,7 +9,7 @@ import { Production } from 'src/entity/production.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, Production]), // Add your entities here
+    TypeOrmModule.forFeature([Order, OrderItem, Production]),
     RedisModule,
   ],
   controllers: [OrderController],

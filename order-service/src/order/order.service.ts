@@ -1,11 +1,12 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Order } from '../entity/order.entity';
-import { Repository, UpdateResult, DataSource } from 'typeorm';
+import { Repository, UpdateResult, DataSource, In } from 'typeorm';
 import { CreateOrderDto, QueryOrderDto } from '../order/order.dto';
 import { OrderStatus } from '../entity/orderStatus.enum';
 import { RedisClientType } from 'redis';
 import { OrderItem } from 'src/entity/orderItem.entity';
 import { Production } from 'src/entity/production.entity';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class OrderService {
@@ -18,6 +19,7 @@ export class OrderService {
     @Inject('REDIS_SUBSCRIBER')
     private readonly redisSubscriber: RedisClientType,
     private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
   ) {
     this.orderRepository = this.dataSource.getRepository(Order);
     this.productRepository = this.dataSource.getRepository(Production);
@@ -30,14 +32,14 @@ export class OrderService {
 
   async onModuleInit() {
     await this.redisSubscriber.subscribe(
-      'payment.verified',
+      this.configService.get('PAYMENT_VERIFIED', 'payment.verified'),
       async (message) => {
         console.log(`Payment verified at ${new Date().toISOString()}`, message);
-        interface Order {
+        interface PaymentVerifiedMessage {
           id: string;
           status: string;
         }
-        const { id, status } = JSON.parse(message) as Order;
+        const { id, status } = JSON.parse(message) as PaymentVerifiedMessage;
         const order = await this.orderRepository.findOneBy({ id });
         if (!order) {
           throw new NotFoundException(`Order with id ${id} not found`);
@@ -131,11 +133,22 @@ export class OrderService {
     });
     await this.orderRepository.save(newOrder);
 
+    //add order items
     const items: OrderItem[] = [];
+    const productIds = order.items.map((item) => item.productId);
+    const products = await this.productRepository.findBy({
+      id: In(productIds),
+    });
+    const productMap = new Map(
+      products.map((product) => [product.id, product]),
+    );
     for (const item of order.items) {
-      const product = await this.productRepository.findOneByOrFail({
-        id: item.productId,
-      });
+      const product = productMap.get(item.productId);
+      if (!product) {
+        throw new NotFoundException(
+          `Product with id ${item.productId} not found`,
+        );
+      }
       items.push({
         order: newOrder,
         production: product,
@@ -143,6 +156,8 @@ export class OrderService {
       } as OrderItem);
     }
     await this.orderItemRepository.save(items);
+
+    //get full order
     const fullOrder = await this.orderRepository.findOne({
       where: { id: newOrder.id },
       relations: ['items', 'items.production'],
@@ -157,7 +172,7 @@ export class OrderService {
     // });
 
     await this.redisPublisher.publish(
-      'order.created',
+      this.configService.get('ORDER_CREATED', 'order.created'),
       JSON.stringify({ id: newOrder.id, status: newOrder.status }),
     );
     return fullOrder as Order;
