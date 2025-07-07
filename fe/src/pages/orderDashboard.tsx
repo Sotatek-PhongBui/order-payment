@@ -47,6 +47,7 @@ export default function OrderDashboard() {
         sortBy,
         sortOrder,
       }),
+    refetchInterval: 5000,
   });
 
   const updateParams = (update: Record<string, string>) => {
@@ -92,9 +93,9 @@ export default function OrderDashboard() {
   };
 
   const handleCreateOrder = async (order: CreateOrder) => {
-    console.log("Create order", order);
     await createOrder(order);
-    await queryClient.invalidateQueries({ queryKey: ["orders"] });
+    console.log("Create order", order);
+    await queryClient.refetchQueries({ queryKey: ["orders"], exact: false });
   };
 
   return (

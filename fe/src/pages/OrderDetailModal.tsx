@@ -17,12 +17,14 @@ import { formatCurrency, formatDate } from "../utils/formatters";
 // import { PRODUCTS } from "../data/mockProduct";
 import { useQuery } from "@tanstack/react-query";
 import { fetchOrderDetail } from "@/data/api";
+import { cn } from "@/lib/utils";
+import { Check, X } from "lucide-react";
 
 interface OrderDetailModalProps {
   order: Order | null;
   isOpen: boolean;
   onClose: () => void;
-  onCancelOrder: (orderId: string) => void;
+  onCancelOrder: (orderId: string) => Promise<void>;
 }
 
 export function OrderDetailModal({
@@ -42,6 +44,13 @@ OrderDetailModalProps) {
     enabled: !!orderId && isOpen,
     queryFn: () => fetchOrderDetail(orderId),
   });
+
+  //stepper
+  const steps = ["created", "confirmed", "deliveried"];
+  const currentIndex =
+    orderDetail?.status === "cancelled"
+      ? 0
+      : steps.indexOf(orderDetail?.status ?? "");
 
   if (!order) {
     return (
@@ -71,6 +80,10 @@ OrderDetailModalProps) {
     return sum + item.quantity * item.production.price;
   }, 0);
 
+  const handleCancelOrder = async () => {
+    await onCancelOrder(orderId);
+    onClose();
+  };
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
@@ -124,10 +137,60 @@ OrderDetailModalProps) {
             <span className="font-medium">Tổng tiền:</span>
             <span className="text-lg font-bold">{formatCurrency(total)}</span>
           </div>
-
           <div>
             <Label className="text-sm font-medium">Ngày tạo</Label>
             <p className="text-sm">{formatDate(orderDetail.createdAt)}</p>
+          </div>
+
+          <div className="flex justify-between items-center pt-4 border-t">
+            <span className="font-medium">Trạng thái:</span>
+          </div>
+
+          <div className="flex flex-col space-y-2">
+            {orderDetail?.status !== "cancelled" && (
+              <div className="flex items-center justify-center space-x-4">
+                {steps.map((step, index) => (
+                  <div key={step} className="flex items-center">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center border text-sm font-medium",
+                          index < currentIndex &&
+                            "bg-green-500 text-white border-green-500",
+                          index === currentIndex &&
+                            "bg-green-500 text-white border-green-500",
+                          index > currentIndex &&
+                            "bg-white text-gray-400 border-gray-300"
+                        )}
+                      >
+                        {index <= currentIndex ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          index + 1
+                        )}
+                      </div>
+
+                      <div className="mt-1 text-sm capitalize">{step}</div>
+                    </div>
+
+                    {index < steps.length - 1 && (
+                      <div className="w-24 h-px bg-pink-300 mx-1 translate-y-[-10px]"></div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {orderDetail?.status === "cancelled" && (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center border border-red-500 bg-red-500 text-white">
+                  <X className="w-4 h-4" />
+                </div>
+                <div className="text-lg font-medium text-red-500">
+                  Cancelled
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <DialogFooter>
@@ -136,10 +199,7 @@ OrderDetailModalProps) {
           </Button>
           {orderDetail.status !== "cancelled" &&
             orderDetail.status !== "deliveried" && (
-              <Button
-                variant="destructive"
-                onClick={() => onCancelOrder(orderId)}
-              >
+              <Button variant="destructive" onClick={handleCancelOrder}>
                 Hủy đơn hàng
               </Button>
             )}

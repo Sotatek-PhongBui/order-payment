@@ -27,7 +27,7 @@ import { PRODUCTS } from "../data/mockProduct";
 interface CreateOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateOrder: (order: CreateOrder) => void;
+  onCreateOrder: (order: CreateOrder) => Promise<void>;
 }
 
 interface NewOrderForm {
@@ -45,7 +45,7 @@ export function CreateOrderModal({
     items: [{ productId: PRODUCTS[0].id, quantity: 1 } as CreateOrderItem],
   });
 
-  const handleCreateOrder = () => {
+  const handleCreateOrder = async () => {
     const order: CreateOrder = {
       userId: newOrder.userId,
       status: "created",
@@ -55,7 +55,7 @@ export function CreateOrderModal({
       createdAt: new Date().toISOString(),
     } as CreateOrder;
 
-    onCreateOrder(order);
+    await onCreateOrder(order);
     onClose();
     setNewOrder({
       userId: "",
