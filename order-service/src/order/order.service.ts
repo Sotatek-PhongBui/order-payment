@@ -1,6 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Order } from '../entity/order.entity';
-import { Repository, UpdateResult, DataSource, In } from 'typeorm';
+import { Repository, UpdateResult, DataSource } from 'typeorm';
 import { CreateOrderDto, QueryOrderDto } from '../order/order.dto';
 import { OrderStatus } from '../entity/orderStatus.enum';
 import { RedisClientType } from 'redis';
@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
   private readonly orderRepository: Repository<Order>;
   private readonly productRepository: Repository<Production>;
   private readonly orderItemRepository: Repository<OrderItem>;
@@ -97,6 +98,11 @@ export class OrderService {
       },
     });
 
+    const [cancel, deliveried] = await Promise.all([
+      this.orderRepository.count({ where: { status: OrderStatus.CANCELLED } }),
+      this.orderRepository.count({ where: { status: OrderStatus.DELIVERIED } }),
+    ]);
+
     return {
       data,
       meta: {
@@ -104,12 +110,8 @@ export class OrderService {
         page: Number(query.page),
         limit: take,
         totalPages: Math.ceil(total / take),
-        cancelled: data.filter(
-          (order) => order.status === OrderStatus.CANCELLED,
-        ).length,
-        deliveried: data.filter(
-          (order) => order.status === OrderStatus.DELIVERIED,
-        ).length,
+        cancelled: cancel,
+        deliveried: deliveried,
       },
     };
   }
@@ -128,54 +130,28 @@ export class OrderService {
 
   async createOrder(order: CreateOrderDto): Promise<Order> {
     console.log('Order created', order);
-    const newOrder = this.orderRepository.create({
-      userId: order.userId,
-    });
-    await this.orderRepository.save(newOrder);
+    const newOrder = await this.orderRepository.save({ userId: order.userId });
 
     //add order items
     const items: OrderItem[] = [];
-    const productIds = order.items.map((item) => item.productId);
-    const products = await this.productRepository.findBy({
-      id: In(productIds),
-    });
-    const productMap = new Map(
-      products.map((product) => [product.id, product]),
-    );
     for (const item of order.items) {
-      const product = productMap.get(item.productId);
-      if (!product) {
-        throw new NotFoundException(
-          `Product with id ${item.productId} not found`,
-        );
-      }
       items.push({
         order: newOrder,
-        production: product,
+        production: { id: item.productId },
         quantity: item.quantity,
       } as OrderItem);
     }
     await this.orderItemRepository.save(items);
 
-    //get full order
-    const fullOrder = await this.orderRepository.findOne({
-      where: { id: newOrder.id },
-      relations: ['items', 'items.production'],
-    });
-    // const newOrder: Order = await this.orderRepository.save({
-    //   userId: order.userId,
-    //   items: order.items.map((item) => ({
-    //     // order: { id: newOrder.id },
-    //     production: { id: item.productId },
-    //     quantity: item.quantity,
-    //   })),
-    // });
-
-    await this.redisPublisher.publish(
-      this.configService.get('ORDER_CREATED', 'order.created'),
-      JSON.stringify({ id: newOrder.id, status: newOrder.status }),
-    );
-    return fullOrder as Order;
+    this.redisPublisher
+      .publish(
+        this.configService.get('ORDER_CREATED', 'order.created'),
+        JSON.stringify({ id: newOrder.id, status: newOrder.status }),
+      )
+      .catch((err) => {
+        this.logger.error(`Error publishing order created: ${err}`);
+      });
+    return newOrder;
   }
 
   async cancelOrder(id: string): Promise<UpdateResult> {

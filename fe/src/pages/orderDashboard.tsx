@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,6 @@ export default function OrderDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
-  // const searchTerm = searchParams.get("search") || "";
   const status = searchParams.get("status") || "all";
   const sortBy = searchParams.get("sortBy") || "createdAt";
   const sortOrder = searchParams.get("sortOrder") || "desc";
@@ -47,7 +46,7 @@ export default function OrderDashboard() {
         sortBy,
         sortOrder,
       }),
-    refetchInterval: 5000,
+    // refetchInterval: 5000,
   });
 
   const updateParams = (update: Record<string, string>) => {
@@ -74,10 +73,6 @@ export default function OrderDashboard() {
     updateParams({ page: String(page) });
   };
 
-  // const handleSearchChange = (term: string) => {
-  //   updateParams({ search: term, page: "1" });
-  // };
-
   const handleStatusChange = (newStatus: string) => {
     updateParams({ status: newStatus, page: "1" });
   };
@@ -87,16 +82,21 @@ export default function OrderDashboard() {
     setIsDetailModalOpen(true);
   };
 
-  const handleCancelOrder = async (orderId: string) => {
-    await cancelOrder(orderId);
-    queryClient.invalidateQueries({ queryKey: ["orders"] });
-  };
+  const { mutateAsync: createOrderMutateAsync, isPending: isCreating } =
+    useMutation({
+      mutationFn: (order: CreateOrder) => createOrder(order),
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      },
+    });
 
-  const handleCreateOrder = async (order: CreateOrder) => {
-    await createOrder(order);
-    console.log("Create order", order);
-    await queryClient.refetchQueries({ queryKey: ["orders"], exact: false });
-  };
+  const { mutateAsync: cancelOrderMutateAsync, isPending: isCancelling } =
+    useMutation({
+      mutationFn: (orderId: string) => cancelOrder(orderId),
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: ["orders"] });
+      },
+    });
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -130,8 +130,6 @@ export default function OrderDashboard() {
         </CardHeader>
         <CardContent>
           <OrderFilters
-            // searchTerm={searchTerm}
-            // setSearchTerm={handleSearchChange}
             statusFilter={status}
             setStatusFilter={handleStatusChange}
           />
@@ -143,9 +141,10 @@ export default function OrderDashboard() {
             <>
               <OrderTable
                 orders={data?.data || []}
+                isCancelling={isCancelling}
                 onSort={handleSort}
                 onViewOrder={handleViewOrder}
-                onCancelOrder={handleCancelOrder}
+                onCancelOrder={cancelOrderMutateAsync}
               />
 
               <Pagination
@@ -168,13 +167,14 @@ export default function OrderDashboard() {
         order={selectedOrder}
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
-        onCancelOrder={handleCancelOrder}
+        onCancelOrder={cancelOrderMutateAsync}
       />
 
       <CreateOrderModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onCreateOrder={handleCreateOrder}
+        isCreating={isCreating}
+        onCreateOrder={createOrderMutateAsync}
       />
     </div>
   );

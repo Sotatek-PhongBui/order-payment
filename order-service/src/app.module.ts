@@ -6,6 +6,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { databaseconfig } from './config/database.config';
 import { validate } from './config/env.validation';
+import { TransformInterceptor } from './interceptor/transform.interceptor';
+import { ExceptionFilter } from './exception-filter/exception.filter';
 
 @Module({
   imports: [
@@ -22,6 +24,16 @@ import { validate } from './config/env.validation';
     OrderModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: 'APP_INTERCEPTOR',
+      useClass: TransformInterceptor,
+    },
+    {
+      provide: 'APP_FILTER',
+      useClass: ExceptionFilter,
+    },
+  ],
 })
 export class AppModule {}

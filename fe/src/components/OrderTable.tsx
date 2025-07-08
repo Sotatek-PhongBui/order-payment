@@ -25,6 +25,7 @@ import { formatDate } from "../utils/formatters";
 
 interface OrderTableProps {
   orders: Order[];
+  isCancelling: boolean;
   onSort: (field: SortBy) => void;
   onViewOrder: (order: Order) => void;
   onCancelOrder: (orderId: string) => void;
@@ -32,6 +33,7 @@ interface OrderTableProps {
 
 export function OrderTable({
   orders,
+  isCancelling,
   onSort,
   onViewOrder,
   onCancelOrder,
@@ -51,16 +53,6 @@ export function OrderTable({
                 <ArrowUpDown className="ml-2 h-4 w-4" />
               </Button>
             </TableHead>
-            {/* <TableHead>
-              <Button
-                variant="ghost"
-                onClick={() => onSort("customerName")}
-                className="h-auto p-0 font-semibold"
-              >
-                Khách hàng
-                <ArrowUpDown className="ml-2 h-4 w-4" />
-              </Button>
-            </TableHead> */}
             <TableHead className="text-center align-middle">
               <Button
                 variant="ghost"
@@ -71,16 +63,6 @@ export function OrderTable({
                 <ArrowUpDown className="ml-2 h-4 w-4" />
               </Button>
             </TableHead>
-            {/* <TableHead>
-              <Button
-                variant="ghost"
-                onClick={() => onSort("total")}
-                className="h-auto p-0 font-semibold"
-              >
-                Tổng tiền
-                <ArrowUpDown className="ml-2 h-4 w-4" />
-              </Button>
-            </TableHead> */}
             <TableHead className="text-center align-middle">
               <Button
                 variant="ghost"
@@ -105,22 +87,11 @@ export function OrderTable({
             orders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell className="font-medium">{order.id}</TableCell>
-                {/* <TableCell>
-                  <div>
-                    <div className="font-medium">{order.customerName}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {order.customerEmail}
-                    </div>
-                  </div>
-                </TableCell> */}
                 <TableCell>
                   <Badge className={statusColors[order.status]}>
                     {statusLabels[order.status]}
                   </Badge>
                 </TableCell>
-                {/* <TableCell className="font-medium">
-                  {formatCurrency(order.total)}
-                </TableCell> */}
                 <TableCell>{formatDate(order.createdAt)}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
@@ -140,11 +111,13 @@ export function OrderTable({
                       {order.status !== "cancelled" &&
                         order.status !== "deliveried" && (
                           <DropdownMenuItem
+                            onSelect={(e) => e.preventDefault()}
                             onClick={() => onCancelOrder(order.id)}
+                            disabled={isCancelling}
                             className="text-red-600"
                           >
                             <X className="mr-2 h-4 w-4" />
-                            Hủy đơn hàng
+                            {isCancelling ? "Đang hủy..." : "Hủy đơn hàng"}
                           </DropdownMenuItem>
                         )}
                     </DropdownMenuContent>

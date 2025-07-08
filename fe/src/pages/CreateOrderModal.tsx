@@ -20,14 +20,15 @@ import {
 } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
-import type { CreateOrderItem, CreateOrder } from "../types/order";
+import type { CreateOrderItem, CreateOrder, Order } from "../types/order";
 import { formatCurrency } from "../utils/formatters";
 import { PRODUCTS } from "../data/mockProduct";
 
 interface CreateOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateOrder: (order: CreateOrder) => Promise<void>;
+  isCreating: boolean;
+  onCreateOrder: (order: CreateOrder) => Promise<Order>;
 }
 
 interface NewOrderForm {
@@ -38,6 +39,7 @@ interface NewOrderForm {
 export function CreateOrderModal({
   isOpen,
   onClose,
+  isCreating,
   onCreateOrder,
 }: CreateOrderModalProps) {
   const [newOrder, setNewOrder] = useState<NewOrderForm>({
@@ -48,11 +50,9 @@ export function CreateOrderModal({
   const handleCreateOrder = async () => {
     const order: CreateOrder = {
       userId: newOrder.userId,
-      status: "created",
       items: newOrder.items.map((item) => ({
         ...item,
       })) as CreateOrderItem[],
-      createdAt: new Date().toISOString(),
     } as CreateOrder;
 
     await onCreateOrder(order);
@@ -188,7 +188,9 @@ export function CreateOrderModal({
           <Button variant="outline" onClick={onClose}>
             Hủy
           </Button>
-          <Button onClick={handleCreateOrder}>Tạo đơn hàng</Button>
+          <Button onClick={handleCreateOrder} disabled={isCreating}>
+            {isCreating ? "Đang tạo..." : "Tạo đơn hàng"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
