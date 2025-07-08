@@ -8,7 +8,6 @@ export class OrderController {
 
   @Get()
   getOrders(@Query() query: QueryOrderDto) {
-    console.log(query);
     return this.orderService.getOrders(query);
   }
   @Get(':id')

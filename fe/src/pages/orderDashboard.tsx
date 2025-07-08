@@ -24,6 +24,7 @@ import { cancelOrder, createOrder, fetchOrder } from "../data/api";
 import { io } from "socket.io-client";
 
 const socket = io("http://localhost:4001/order");
+
 export default function OrderDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();

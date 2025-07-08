@@ -5,15 +5,15 @@ import { CreateOrderDto, QueryOrderDto } from '../order/order.dto';
 import { OrderStatus } from '../entity/orderStatus.enum';
 import { RedisClientType } from 'redis';
 import { OrderItem } from 'src/entity/orderItem.entity';
-import { Production } from 'src/entity/production.entity';
 import { ConfigService } from '@nestjs/config';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
+import { orderStateMachine } from './order.machine';
+import { createActor } from 'xstate';
 
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
   private readonly orderRepository: Repository<Order>;
-  private readonly productRepository: Repository<Production>;
   private readonly orderItemRepository: Repository<OrderItem>;
   constructor(
     @Inject('REDIS_PUBLISHER')
@@ -25,7 +25,6 @@ export class OrderService {
     private readonly gateway: WebsocketGateway,
   ) {
     this.orderRepository = this.dataSource.getRepository(Order);
-    this.productRepository = this.dataSource.getRepository(Production);
     this.orderItemRepository = this.dataSource.getRepository(OrderItem);
   }
 
@@ -43,30 +42,32 @@ export class OrderService {
           status: string;
         }
         const { id, status } = JSON.parse(message) as PaymentVerifiedMessage;
-        const order = await this.orderRepository.findOneBy({ id });
-        if (!order) {
-          throw new NotFoundException(`Order with id ${id} not found`);
-        }
-        if (order.status === OrderStatus.CANCELLED) {
-          return;
-        }
-        if (status === 'confirmed') {
-          await this.orderRepository.update(id, {
-            status: OrderStatus.CONFIRMED,
-          });
-
-          this.deliveryOrder(id).catch((err) => {
-            this.logger.error(`Error delivering order: ${err}`);
-          });
-        } else {
-          await this.orderRepository.update(id, {
-            status: OrderStatus.CANCELLED,
-          });
-        }
-        this.gateway.notifyData();
+        await this.updateOrderStatus(id, status);
+        await this.delay(60000);
+        await this.updateOrderStatus(id, 'deliveried');
       },
     );
   }
+
+  async updateOrderStatus(id: string, event: string): Promise<void> {
+    const order = await this.orderRepository.findOneBy({ id });
+    if (!order) {
+      throw new NotFoundException(`Order with id ${id} not found`);
+    }
+    if (order.status === OrderStatus.CANCELLED) {
+      return;
+    }
+
+    const actor = createActor(orderStateMachine, {
+      input: { status: order.status },
+    });
+    actor.start();
+    actor.send({ type: event as 'confirmed' | 'cancelled' | 'deliveried' });
+    const nextState = actor.getSnapshot().value as OrderStatus;
+    await this.orderRepository.update(id, { status: nextState });
+    this.gateway.notifyData();
+  }
+
   async getOrders(query: QueryOrderDto): Promise<{
     data: Order[];
     meta: {
@@ -174,21 +175,5 @@ export class OrderService {
       throw new NotFoundException(`Order with id ${id} not found`);
     }
     return order.status;
-  }
-
-  async deliveryOrder(id: string): Promise<void> {
-    await this.delay(60000);
-    const order = await this.orderRepository.findOneBy({ id });
-    if (!order) {
-      throw new NotFoundException(`Order with id ${id} not found`);
-    }
-    if (order.status === OrderStatus.CANCELLED) {
-      return;
-    }
-    console.log(`Order delivered at ${new Date().toISOString()}`, id);
-    await this.orderRepository.update(id, {
-      status: OrderStatus.DELIVERIED,
-    });
-    this.gateway.notifyData();
   }
 }
