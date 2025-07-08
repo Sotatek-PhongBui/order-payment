@@ -7,6 +7,7 @@ import { RedisClientType } from 'redis';
 import { OrderItem } from 'src/entity/orderItem.entity';
 import { Production } from 'src/entity/production.entity';
 import { ConfigService } from '@nestjs/config';
+import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 
 @Injectable()
 export class OrderService {
@@ -21,6 +22,7 @@ export class OrderService {
     private readonly redisSubscriber: RedisClientType,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
+    private readonly gateway: WebsocketGateway,
   ) {
     this.orderRepository = this.dataSource.getRepository(Order);
     this.productRepository = this.dataSource.getRepository(Production);
@@ -52,12 +54,16 @@ export class OrderService {
           await this.orderRepository.update(id, {
             status: OrderStatus.CONFIRMED,
           });
-          await this.deliveryOrder(id);
+
+          this.deliveryOrder(id).catch((err) => {
+            this.logger.error(`Error delivering order: ${err}`);
+          });
         } else {
           await this.orderRepository.update(id, {
             status: OrderStatus.CANCELLED,
           });
         }
+        this.gateway.notifyData();
       },
     );
   }
@@ -170,18 +176,19 @@ export class OrderService {
     return order.status;
   }
 
-  async deliveryOrder(id: string): Promise<UpdateResult> {
+  async deliveryOrder(id: string): Promise<void> {
     await this.delay(60000);
     const order = await this.orderRepository.findOneBy({ id });
     if (!order) {
       throw new NotFoundException(`Order with id ${id} not found`);
     }
     if (order.status === OrderStatus.CANCELLED) {
-      return { affected: 0 } as UpdateResult;
+      return;
     }
     console.log(`Order delivered at ${new Date().toISOString()}`, id);
-    return await this.orderRepository.update(id, {
+    await this.orderRepository.update(id, {
       status: OrderStatus.DELIVERIED,
     });
+    this.gateway.notifyData();
   }
 }

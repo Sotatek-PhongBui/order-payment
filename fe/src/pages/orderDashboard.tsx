@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,9 @@ import { OrderDetailModal } from "./OrderDetailModal";
 import { CreateOrderModal } from "./CreateOrderModal";
 import { Pagination } from "../components/Pagination";
 import { cancelOrder, createOrder, fetchOrder } from "../data/api";
+import { io } from "socket.io-client";
 
+const socket = io("http://localhost:4001/order");
 export default function OrderDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -46,8 +48,14 @@ export default function OrderDashboard() {
         sortBy,
         sortOrder,
       }),
-    // refetchInterval: 5000,
   });
+  useEffect(() => {
+    socket.connect();
+    socket.on("notify change", () => {
+      console.log("notify change");
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    });
+  }, []);
 
   const updateParams = (update: Record<string, string>) => {
     const next = new URLSearchParams(searchParams);
