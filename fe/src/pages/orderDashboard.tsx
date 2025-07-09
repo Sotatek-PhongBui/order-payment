@@ -22,6 +22,7 @@ import { CreateOrderModal } from "./CreateOrderModal";
 import { Pagination } from "../components/Pagination";
 import { cancelOrder, createOrder, fetchOrder } from "../data/api";
 import { io } from "socket.io-client";
+import { toast } from "sonner";
 
 const socket = io("http://localhost:4001/order");
 
@@ -51,11 +52,15 @@ export default function OrderDashboard() {
       }),
   });
   useEffect(() => {
-    socket.connect();
+    // socket.connect();
+    socket.off("notify change");
     socket.on("notify change", () => {
       console.log("notify change");
       queryClient.invalidateQueries({ queryKey: ["orders"] });
     });
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   const updateParams = (update: Record<string, string>) => {
@@ -96,6 +101,7 @@ export default function OrderDashboard() {
       mutationFn: (order: CreateOrder) => createOrder(order),
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: ["orders"] });
+        toast.success("Đơn hàng đã được tạo thành công");
       },
     });
 
@@ -104,6 +110,7 @@ export default function OrderDashboard() {
       mutationFn: (orderId: string) => cancelOrder(orderId),
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: ["orders"] });
+        toast.success("Đơn hàng đã được hủy thành công");
       },
     });
 

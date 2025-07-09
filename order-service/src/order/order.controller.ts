@@ -21,8 +21,8 @@ export class OrderController {
   }
   //cancel order
   @Post(':id/cancel')
-  cancelOrder(@Param() id: string) {
-    return this.orderService.cancelOrder(id);
+  cancelOrder(@Param('id') id: string) {
+    return this.orderService.updateOrderStatus(id, 'cancelled');
   }
   //check order status
   @Get(':id/status')

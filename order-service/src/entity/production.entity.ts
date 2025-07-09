@@ -5,16 +5,18 @@ import { OrderItem } from './orderItem.entity';
 export class Production {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
   @Column()
   name: string;
+
   @Column()
   description: string;
+
   @Column()
   price: number;
+
   @OneToMany(() => OrderItem, (orderItem) => orderItem.production, {
     cascade: true,
   })
   items: OrderItem[];
-  @Column({ default: true })
-  isActive: boolean;
 }

@@ -1,15 +1,17 @@
 import OrderDashboard from "./pages/orderDashboard";
 import "./App.css";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { Toaster } from "sonner";
 
-function App() {
+export default function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/order" element={<OrderDashboard />} />
-      </Routes>
-    </Router>
+    <>
+      <Toaster />
+      <Router>
+        <Routes>
+          <Route path="/" element={<OrderDashboard />} />
+        </Routes>
+      </Router>
+    </>
   );
 }
-
-export default App;

@@ -5,6 +5,7 @@ export const orderStateMachine = createMachine({
   types: {} as {
     context: {
       status: OrderStatus;
+      id: string;
     };
     events:
       | { type: 'confirmed' }
@@ -14,6 +15,7 @@ export const orderStateMachine = createMachine({
   id: 'orderStatus',
   initial: OrderStatus.CREATED,
   context: {
+    id: '1',
     status: OrderStatus.CREATED,
   },
   states: {

@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Order } from '../entity/order.entity';
-import { Repository, UpdateResult, DataSource } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { CreateOrderDto, QueryOrderDto } from '../order/order.dto';
 import { OrderStatus } from '../entity/orderStatus.enum';
 import { RedisClientType } from 'redis';
@@ -8,13 +8,17 @@ import { OrderItem } from 'src/entity/orderItem.entity';
 import { ConfigService } from '@nestjs/config';
 import { WebsocketGateway } from 'src/websocket/websocket.gateway';
 import { orderStateMachine } from './order.machine';
-import { createActor } from 'xstate';
+import { Actor, createActor } from 'xstate';
 
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
   private readonly orderRepository: Repository<Order>;
   private readonly orderItemRepository: Repository<OrderItem>;
+  private readonly orderActorMap = new Map<
+    string,
+    Actor<typeof orderStateMachine>
+  >();
   constructor(
     @Inject('REDIS_PUBLISHER')
     private readonly redisPublisher: RedisClientType,
@@ -33,39 +37,52 @@ export class OrderService {
   }
 
   async onModuleInit() {
-    await this.redisSubscriber.subscribe(
-      this.configService.get('PAYMENT_VERIFIED', 'payment.verified'),
-      async (message) => {
-        console.log(`Payment verified at ${new Date().toISOString()}`, message);
-        interface PaymentVerifiedMessage {
-          id: string;
-          status: string;
-        }
-        const { id, status } = JSON.parse(message) as PaymentVerifiedMessage;
-        await this.updateOrderStatus(id, status);
-        await this.delay(60000);
-        await this.updateOrderStatus(id, 'deliveried');
-      },
-    );
+    await this.redisSubscriber
+      .subscribe(
+        this.configService.get('PAYMENT_VERIFIED', 'payment.verified'),
+        (message) => {
+          this.logger.log(`Payment verified: ${message}`);
+          interface PaymentVerifiedMessage {
+            id: string;
+            status: string;
+          }
+          const { id, status } = JSON.parse(message) as PaymentVerifiedMessage;
+          this.updateOrderStatus(id, status).catch((err) => {
+            this.logger.error(`Error updating order status: ${err}`);
+          });
+        },
+      )
+      .catch((err) => {
+        this.logger.error(`Error subscribing to payment verified: ${err}`);
+      });
   }
 
   async updateOrderStatus(id: string, event: string): Promise<void> {
-    const order = await this.orderRepository.findOneBy({ id });
-    if (!order) {
-      throw new NotFoundException(`Order with id ${id} not found`);
+    const actor = this.orderActorMap.get(id);
+    if (!actor) {
+      throw new NotFoundException(`Order with id ${id} not found or cancelled`);
     }
-    if (order.status === OrderStatus.CANCELLED) {
-      return;
-    }
-
-    const actor = createActor(orderStateMachine, {
-      input: { status: order.status },
-    });
-    actor.start();
-    actor.send({ type: event as 'confirmed' | 'cancelled' | 'deliveried' });
+    actor.send({ type: event as 'confirmed' | 'cancelled' });
     const nextState = actor.getSnapshot().value as OrderStatus;
     await this.orderRepository.update(id, { status: nextState });
+    this.logger.log(`Order ${id} status updated to ${nextState}`);
     this.gateway.notifyData();
+    if (nextState === OrderStatus.CANCELLED) {
+      actor.stop();
+      this.orderActorMap.delete(id);
+      return;
+    }
+    await this.delay(60000);
+    actor.send({ type: 'deliveried' });
+    await this.orderRepository.update(id, {
+      status: actor.getSnapshot().value as OrderStatus,
+    });
+    this.logger.log(
+      `Order ${id} status updated to ${actor.getSnapshot().value as OrderStatus}`,
+    );
+    this.gateway.notifyData();
+    actor.stop();
+    this.orderActorMap.delete(id);
   }
 
   async getOrders(query: QueryOrderDto): Promise<{
@@ -79,6 +96,7 @@ export class OrderService {
       deliveried: number;
     };
   }> {
+    console.time('getOrders');
     const take: number = query.limit ?? 10;
     const skip: number = ((query.page ?? 1) - 1) * take;
 
@@ -95,7 +113,7 @@ export class OrderService {
     const orderField = allowedSortFields.includes(query.sortBy)
       ? query.sortBy
       : 'createdAt';
-
+    console.time('findAndCount');
     const [data, total] = await this.orderRepository.findAndCount({
       where,
       take,
@@ -104,11 +122,14 @@ export class OrderService {
         [orderField]: query.sortOrder,
       },
     });
-
+    console.timeEnd('findAndCount');
+    console.time('count cancelled and deliveried');
     const [cancel, deliveried] = await Promise.all([
       this.orderRepository.count({ where: { status: OrderStatus.CANCELLED } }),
       this.orderRepository.count({ where: { status: OrderStatus.DELIVERIED } }),
     ]);
+    console.timeEnd('count cancelled and deliveried');
+    console.timeEnd('getOrders');
 
     return {
       data,
@@ -148,7 +169,19 @@ export class OrderService {
         quantity: item.quantity,
       } as OrderItem);
     }
-    await this.orderItemRepository.save(items);
+
+    try {
+      await this.orderItemRepository.insert(items);
+    } catch (err) {
+      throw new Error(`Error creating order items: ${err}`);
+    }
+
+    // create order actor for state machine
+    const actor = createActor(orderStateMachine, {
+      input: { id: newOrder.id, status: newOrder.status },
+    });
+    actor.start();
+    this.orderActorMap.set(newOrder.id, actor);
 
     this.redisPublisher
       .publish(
@@ -159,13 +192,6 @@ export class OrderService {
         this.logger.error(`Error publishing order created: ${err}`);
       });
     return newOrder;
-  }
-
-  async cancelOrder(id: string): Promise<UpdateResult> {
-    console.log('Order cancelled', id);
-    return await this.orderRepository.update(id, {
-      status: OrderStatus.CANCELLED,
-    });
   }
 
   async checkOrderStatus(id: string): Promise<OrderStatus> {
