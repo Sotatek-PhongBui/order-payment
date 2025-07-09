@@ -7,7 +7,8 @@ export const databaseconfig = (
   type: 'postgres',
   url: configService.get('DB_URL'),
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  synchronize: true,
+  migrations: [__dirname + '/../*.migration{.ts,.js}'],
+  synchronize: false,
   autoLoadEntities: true,
   ssl: {
     rejectUnauthorized: false,

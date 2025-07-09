@@ -15,4 +15,6 @@ export class Production {
     cascade: true,
   })
   items: OrderItem[];
+  @Column({ default: true })
+  isActive: boolean;
 }
