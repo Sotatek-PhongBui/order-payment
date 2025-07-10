@@ -96,7 +96,6 @@ export class OrderService {
       deliveried: number;
     };
   }> {
-    console.time('getOrders');
     const take: number = query.limit ?? 10;
     const skip: number = ((query.page ?? 1) - 1) * take;
 
@@ -113,7 +112,6 @@ export class OrderService {
     const orderField = allowedSortFields.includes(query.sortBy)
       ? query.sortBy
       : 'createdAt';
-    console.time('findAndCount');
     const [data, total] = await this.orderRepository.findAndCount({
       where,
       take,
@@ -122,14 +120,10 @@ export class OrderService {
         [orderField]: query.sortOrder,
       },
     });
-    console.timeEnd('findAndCount');
-    console.time('count cancelled and deliveried');
     const [cancel, deliveried] = await Promise.all([
       this.orderRepository.count({ where: { status: OrderStatus.CANCELLED } }),
       this.orderRepository.count({ where: { status: OrderStatus.DELIVERIED } }),
     ]);
-    console.timeEnd('count cancelled and deliveried');
-    console.timeEnd('getOrders');
 
     return {
       data,
