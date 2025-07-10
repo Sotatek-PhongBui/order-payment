@@ -9,6 +9,9 @@ class EnvironmentVaribles {
   PORT: number;
 
   @IsString()
+  REDIS_URL: string;
+
+  @IsString()
   ORDER_CREATED: string;
 
   @IsString()

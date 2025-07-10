@@ -51,6 +51,7 @@ export function CreateOrderModal({
     formState: { errors },
   } = useForm<CreateOrder>({
     resolver: zodResolver(createOrderSchema),
+    mode: "onChange",
     defaultValues: {
       userId: "1",
       items: [{ productId: PRODUCTS[0].id, quantity: 1 }],

@@ -7,6 +7,9 @@ class EnvironmentVaribles {
 
   @IsString()
   PAYMENT_VERIFIED: string;
+
+  @IsString()
+  REDIS_URL: string;
 }
 
 export function validate(config: Record<string, unknown>) {

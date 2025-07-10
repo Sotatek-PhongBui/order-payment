@@ -1,0 +1,28 @@
+# ./frontend-app/Dockerfile
+
+# Sử dụng Node.js image làm base
+FROM node:20-alpine
+
+# Đặt thư mục làm việc trong container
+WORKDIR /app
+
+# Copy package.json và package-lock.json để cài đặt dependencies
+# Sử dụng wildcard để đảm bảo cả package.json và package-lock.json/yarn.lock được copy
+COPY package*.json ./
+
+# Cài đặt dependencies
+# Nếu bạn dùng Yarn, hãy thay thế bằng RUN yarn install
+RUN npm install
+
+# Copy toàn bộ mã nguồn vào thư mục làm việc
+COPY . .
+
+# Vite dev server mặc định chạy trên cổng 5173.
+# EXPOSE cổng này để nó có thể được truy cập bên trong mạng Docker.
+EXPOSE 5173
+
+# Lệnh để khởi chạy Vite dev server
+# Cần đảm bảo rằng Vite server lắng nghe trên tất cả các interface (0.0.0.0)
+# để có thể truy cập được từ bên ngoài container.
+# Thêm --host 0.0.0.0 vào lệnh npm run dev của bạn trong package.json
+CMD [ "npm", "run", "dev", "--", "--host", "0.0.0.0" ]

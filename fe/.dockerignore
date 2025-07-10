@@ -1,0 +1,34 @@
+# ./.dockerignore (đặt trong thư mục gốc của frontend-app)
+
+# Thư mục Node.js dependencies đã cài đặt cục bộ
+node_modules/
+
+# File cấu hình biến môi trường cục bộ
+.env
+.env.*local
+
+# Thư mục build cục bộ
+dist/
+build/
+out/
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Thư mục của hệ thống kiểm soát phiên bản
+.git/
+.gitignore
+
+# Thư mục IDE/Editor
+.vscode/
+.idea/
+
+# Thư mục Cache
+.cache/
+
+# Tệp tin temporary
+tmp/
+*.tmp
